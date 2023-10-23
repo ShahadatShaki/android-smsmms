@@ -1,6 +1,7 @@
 package com.klinker.android.messaging_sample;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 
@@ -11,6 +12,11 @@ public class MmsReceivedReceiverImpl extends MmsReceivedReceiver {
     @Override
     public void onMessageReceived(Context context, Uri messageUri) {
         Log.v("MmsReceived", "message received: " + messageUri.toString());
+    }
+
+    @Override
+    public void onReceiveMMS(Context context, Intent intent) {
+
     }
 
     @Override

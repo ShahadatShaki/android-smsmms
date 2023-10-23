@@ -83,6 +83,8 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
 
     public abstract void onMessageReceived(Context context, Uri messageUri);
 
+    public abstract void onReceiveMMS(final Context context, final Intent intent);
+
     public abstract void onError(Context context, String error);
 
     public MmscInformation getMmscInfoForReceptionAck(Context context, int subscriptionId) {
@@ -99,6 +101,8 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
     public final void onReceive(final Context context, final Intent intent) {
         Log.v(TAG, "MMS has finished downloading, persisting it to the database");
 
+        onReceiveMMS(context, intent);
+
         final String path = intent.getStringExtra(EXTRA_FILE_PATH);
         final int subscriptionId = intent.getIntExtra(SUBSCRIPTION_ID, Utils.getDefaultSubscriptionId());
         final String locationUrl = intent.getStringExtra(EXTRA_LOCATION_URL);
@@ -109,6 +113,8 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
             FileInputStream reader = null;
             Uri messageUri = null;
             String errorMessage = null;
+
+
 
             try {
                 File mDownloadFile = new File(path);
@@ -151,7 +157,10 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
             } catch (IOException e) {
                 errorMessage = "MMS received, io exception";
                 Log.e(TAG, errorMessage, e);
-            } finally {
+            } catch (Exception e){
+                errorMessage = e.getMessage();
+                Log.e(TAG, errorMessage, e);
+            }finally {
                 if (reader != null) {
                     try {
                         reader.close();
