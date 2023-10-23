@@ -124,19 +124,19 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
                 reader.read(response, 0, nBytes);
 
                 final MmsConfig.Overridden mmsConfig = new MmsConfig.Overridden(new MmsConfig(context), null);
-                final String address = parseSenderAddressFromPdu(context, response, locationUrl, mmsConfig);
-                if (isAddressBlocked(context, address)) {
-                    // Delete the corresponding NotificationInd.
-                    SqliteWrapper.delete(context,
-                            context.getContentResolver(),
-                            Telephony.Mms.CONTENT_URI,
-                            LOCATION_SELECTION,
-                            new String[]{
-                                    Integer.toString(PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND),
-                                    locationUrl
-                            });
-                    return;
-                }
+//                final String address = parseSenderAddressFromPdu(context, response, locationUrl, mmsConfig);
+//                if (isAddressBlocked(context, address)) {
+//                    // Delete the corresponding NotificationInd.
+//                    SqliteWrapper.delete(context,
+//                            context.getContentResolver(),
+//                            Telephony.Mms.CONTENT_URI,
+//                            LOCATION_SELECTION,
+//                            new String[]{
+//                                    Integer.toString(PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND),
+//                                    locationUrl
+//                            });
+//                    return;
+//                }
 
                 List<CommonAsyncTask> tasks = getNotificationTask(context, intent, response, subscriptionId);
                 messageUri = DownloadRequest.persist(context, response, mmsConfig,
