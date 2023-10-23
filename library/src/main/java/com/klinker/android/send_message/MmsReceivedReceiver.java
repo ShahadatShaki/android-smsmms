@@ -57,6 +57,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public abstract class MmsReceivedReceiver extends BroadcastReceiver {
+
+    //Updated by Shaki
+
+    private static final String TAG2 = "MmsReceivedReceiver";
     private static final String TAG = "MmsReceivedReceiver";
 
     public static final String MMS_RECEIVED = "com.klinker.android.messaging.MMS_RECEIVED";
