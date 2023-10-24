@@ -1207,7 +1207,7 @@ public class PduParser {
         assert(null != pduDataStream);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int temp = pduDataStream.read();
-        assert(-1 != temp);
+//        assert(-1 != temp);
         while((-1 != temp) && ('\0' != temp)) {
             // check each of the character
             if (stringType == TYPE_TOKEN_STRING) {
@@ -1221,7 +1221,7 @@ public class PduParser {
             }
 
             temp = pduDataStream.read();
-            assert(-1 != temp);
+//            assert(-1 != temp);
         }
 
         if (out.size() > 0) {

@@ -60,9 +60,6 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
 
     //Updated by Shaki
 
-    private static final String TAG2 = "MmsReceivedReceiver";
-    private static final String TAG = "MmsReceivedReceiver";
-
     public static final String MMS_RECEIVED = "com.klinker.android.messaging.MMS_RECEIVED";
     public static final String EXTRA_FILE_PATH = "file_path";
     public static final String EXTRA_LOCATION_URL = "location_url";
@@ -70,11 +67,16 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
     public static final String EXTRA_TRIGGER_PUSH = "trigger_push";
     public static final String EXTRA_URI = "notification_ind_uri";
     public static final String SUBSCRIPTION_ID = "subscription_id";
-
+    private static final String TAG2 = "MmsReceivedReceiver";
+    private static final String TAG = "MmsReceivedReceiver";
     private static final String LOCATION_SELECTION =
             Telephony.Mms.MESSAGE_TYPE + "=? AND " + Telephony.Mms.CONTENT_LOCATION + " =?";
 
     private static final ExecutorService RECEIVE_NOTIFICATION_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    private static NotificationInd getNotificationInd(Context context, Intent intent) throws MmsException {
+        return (NotificationInd) PduPersister.getPduPersister(context).load((Uri) intent.getParcelableExtra(EXTRA_URI));
+    }
 
     public boolean isAddressBlocked(Context context, String address) {
         // Subclasses can override this to screen messages.
@@ -113,7 +115,6 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
             FileInputStream reader = null;
             Uri messageUri = null;
             String errorMessage = null;
-
 
 
             try {
@@ -157,10 +158,10 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
             } catch (IOException e) {
                 errorMessage = "MMS received, io exception";
                 Log.e(TAG, errorMessage, e);
-            } catch (Exception e){
+            } catch (Exception e) {
                 errorMessage = e.getMessage();
                 Log.e(TAG, errorMessage, e);
-            }finally {
+            } finally {
                 if (reader != null) {
                     try {
                         reader.close();
@@ -227,8 +228,39 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
         }
     }
 
-    private static NotificationInd getNotificationInd(Context context, Intent intent) throws MmsException {
-        return (NotificationInd) PduPersister.getPduPersister(context).load((Uri) intent.getParcelableExtra(EXTRA_URI));
+    private List<CommonAsyncTask> getNotificationTask(Context context, Intent intent, byte[] response, int subscriptionId) {
+        if (response.length == 0) {
+            Log.v(TAG, "MmsReceivedReceiver.sendNotification blank response");
+            return null;
+        }
+
+        if (getMmscInfoForReceptionAck(context, subscriptionId) == null) {
+            Log.v(TAG, "No MMSC information set, so no notification tasks will be able to complete");
+            return null;
+        }
+
+        final GenericPdu pdu =
+                (new PduParser(response, new MmsConfig.Overridden(new MmsConfig(context), null).
+                        getSupportMmsContentDisposition())).parse();
+        if (!(pdu instanceof RetrieveConf)) {
+            android.util.Log.e(TAG, "MmsReceivedReceiver.sendNotification failed to parse pdu");
+            return null;
+        }
+
+        try {
+            final NotificationInd ind = getNotificationInd(context, intent);
+            final MmscInformation mmsc = getMmscInfoForReceptionAck(context, subscriptionId);
+            final TransactionSettings transactionSettings = new TransactionSettings(mmsc.mmscUrl, mmsc.mmsProxy, mmsc.proxyPort);
+
+            final List<CommonAsyncTask> responseTasks = new ArrayList<>();
+            responseTasks.add(new AcknowledgeIndTask(context, ind, transactionSettings, (RetrieveConf) pdu));
+            responseTasks.add(new NotifyRespTask(context, ind, transactionSettings));
+
+            return responseTasks;
+        } catch (MmsException e) {
+            Log.e(TAG, "error", e);
+            return null;
+        }
     }
 
     private static abstract class CommonAsyncTask extends AsyncTask<Void, Void, Void> {
@@ -391,41 +423,6 @@ public abstract class MmsReceivedReceiver extends BroadcastReceiver {
                     Log.e(TAG, "error", e);
                 }
             }
-            return null;
-        }
-    }
-
-    private List<CommonAsyncTask> getNotificationTask(Context context, Intent intent, byte[] response, int subscriptionId) {
-        if (response.length == 0) {
-            Log.v(TAG, "MmsReceivedReceiver.sendNotification blank response");
-            return null;
-        }
-
-        if (getMmscInfoForReceptionAck(context, subscriptionId) == null) {
-            Log.v(TAG, "No MMSC information set, so no notification tasks will be able to complete");
-            return null;
-        }
-
-        final GenericPdu pdu =
-                (new PduParser(response, new MmsConfig.Overridden(new MmsConfig(context), null).
-                        getSupportMmsContentDisposition())).parse();
-        if (!(pdu instanceof RetrieveConf)) {
-            android.util.Log.e(TAG, "MmsReceivedReceiver.sendNotification failed to parse pdu");
-            return null;
-        }
-
-        try {
-            final NotificationInd ind = getNotificationInd(context, intent);
-            final MmscInformation mmsc = getMmscInfoForReceptionAck(context, subscriptionId);
-            final TransactionSettings transactionSettings = new TransactionSettings(mmsc.mmscUrl, mmsc.mmsProxy, mmsc.proxyPort);
-
-            final List<CommonAsyncTask> responseTasks = new ArrayList<>();
-            responseTasks.add(new AcknowledgeIndTask(context, ind, transactionSettings, (RetrieveConf) pdu));
-            responseTasks.add(new NotifyRespTask(context, ind, transactionSettings));
-
-            return responseTasks;
-        } catch (MmsException e) {
-            Log.e(TAG, "error", e);
             return null;
         }
     }
